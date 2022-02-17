@@ -39,17 +39,22 @@ def find_closest_coordinate(coordinates, centroid):
 def sort_side(side, side_sorted, type):
     # 0 pozitiv side
     # 1 negative side
+    # both sides
     for p in side:
         if type == 0:
             if p[1] == 0 and p[0] >= 0:
                 start = p
                 side.remove(p)
                 side_sorted.append(start)
-        else:
+        elif type == 1:
             if p[1] == 0 and p[0] < 0:
                 start = p
                 side.remove(p)
                 side_sorted.append(start)
+        else:
+            start = p
+            side.remove(p)
+            side_sorted.append(start)
                 
     if side_sorted.__len__() == 0:
         previous_point = [0.0, 0.0, p[2]]
@@ -153,6 +158,130 @@ def line_from_points(P, Q, which):
             return [0 ,c/b]
             
             
+def add_inetersections_2(slices, height, number):
+    # Metszetek
+    intersection_A_1 = None
+    intersection_A_2 = None
+    intersection_B_1 = None
+    intersection_B_2 = None
+    intersection_C_1 = None
+    intersection_C_2 = None
+    intersection_D_1 = None
+    intersection_D_2 = None
+
+    # Szintenkénti metszéspontok listája
+    intersection_list = []
+    # A metszéspontok megkeresése a két 0-hoz közeli kordináta alpján
+    # A két közeli pont egyenesének egyenletét felállítva az x=0/y=0 pontok megtalálása
+    # Ezek lesznek a metszéspontok
+    #         A1|A2
+    #           |
+    #  D2       |       B1
+    #  ---------+---------
+    #  D1       |       B2
+    #           |
+    #         C2|C1
+        
+    # A szeletekben ha épp valamelyik számunkra fontos szinten vagyunk akkor a belső loop hajtódik végre
+    # Szinteket kaphatná paraméterként és akkor rövidebb!
+    for layer in slices:
+        if layer[0][2] == height:
+            previous = layer[0]
+            for point in layer:
+                # X negatívból pozitívba vált 
+                # A1, A2
+                if previous[0] <= 0 and point[0] >= 0:
+                    intersection_A_1 = previous
+                    intersection_A_2 = point
+                
+                # X pozitívból negatívba vált 
+                # C1, C2
+                if previous[0] >= 0 and point[0] <= 0:
+                    intersection_C_1 = previous
+                    intersection_C_2 = point
+                
+                # Y negatívból pozitívba vált 
+                # D1, D2
+                if previous[1] <= 0 and point[1] >= 0:
+                    intersection_D_1 = previous
+                    intersection_D_2 = point
+                    
+                # Y pozitívból negatívba vált 
+                # B1, B2
+                if previous[1] >= 0 and point[1] <= 0:
+                    intersection_B_1 = previous
+                    intersection_B_2 = point
+                
+                previous = point
+
+                # Ha C1, C2 vagy A1, A2 lenne NoneType, akkor az x koordinatak olyan sorrendben vannak, hogy csak egyszer valt elojelet, 
+                # ekkor az elso es utolso tagok kozti valtas kell megadni a NoneType valtozoknak
+                if  intersection_C_1 is None and intersection_C_2 is None:
+                    intersection_C_1 = layer[layer.__len__()-1]
+                    intersection_C_2 = layer[0]
+
+                if intersection_A_1 is None and intersection_A_2 is None:
+                    intersection_A_1 = layer[layer.__len__()-1]
+                    intersection_A_2 = layer[0]
+
+                if intersection_B_1 is None and intersection_B_2 is None:
+                    intersection_B_1 = layer[layer.__len__()-1]
+                    intersection_B_2 = layer[0]
+
+                if intersection_D_1 is None and intersection_D_2 is None:
+                    intersection_D_1 = layer[layer.__len__()-1]
+                    intersection_D_2 = layer[0]
+
+            if layer[0][2] == height:
+                intersection_list.append(intersection_A_1)
+                intersection_list.append(intersection_A_2)
+                intersection_list.append(intersection_B_1)
+                intersection_list.append(intersection_B_2)
+                intersection_list.append(intersection_C_1)
+                intersection_list.append(intersection_C_2)
+                intersection_list.append(intersection_D_1)
+                intersection_list.append(intersection_D_2)
+
+    
+    
+    
+    intersections = []
+
+     # A nulla pontok megkeresése
+    #----------------------------------------------------------------------------------------------
+    # A1, A2       
+    p = line_from_points([intersection_list[0][0],intersection_list[0][1]],
+                     [intersection_list[1][0],intersection_list[1][1]],0)
+    p.append(height)
+    #print(p)
+    intersections.append(p)
+
+    # B1, B2
+    p = line_from_points([intersection_list[2][0],intersection_list[2][1]],
+                    [intersection_list[3][0],intersection_list[3][1]],1)
+    p.append(height)
+    #print(p)
+    intersections.append(p)
+    
+    # C1, C2     
+    p = line_from_points([intersection_list[4][0],intersection_list[4][1]],
+                     [intersection_list[5][0],intersection_list[5][1]],0)
+    p.append(height)
+    #print(p)
+    intersections.append(p)
+
+    # D1, D2
+    p = line_from_points([intersection_list[6][0],intersection_list[6][1]],
+                    [intersection_list[7][0],intersection_list[7][1]],1)
+    p.append(height)
+    #print(p)
+    intersections.append(p)
+
+    slices[number] += intersections
+    
+    #print(intersections)
+
+
 
 # Metszéspontok hozzáadása a három fontos szinthez
 def add_intersections(slices, smallest_height, bottom_height, half_way_height, smallest_number, bottom_number, half_way_number):
@@ -360,7 +489,7 @@ def add_intersections(slices, smallest_height, bottom_height, half_way_height, s
     
     #print(intersections_bottom)
     #print(intersections_half_way)
-    #print(intersections_smallest)
+    print(intersections_smallest)
     
     
 

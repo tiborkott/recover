@@ -103,7 +103,6 @@ coordinates_class = []
 
 # Rossz koordináták kiszűrése és minden ötödik elem
 for coordinate in fr.coordinates [::NTH_ELEMENT]:
-    # mm-enként
     if (coordinate[2] % 5) == 0.0:
         coordinates_class.append(fr.Coordinate(coordinate[0],coordinate[1],coordinate[2]))
 
@@ -144,13 +143,10 @@ for slice in reversed(slices):
     if(perimeter <= smallest_perimeter):
         smallest_perimeter = perimeter
         smallest_number = number
-    #print(perimeter, previous_point[2]) 
+        
     number += 1
 
 smallest_height = slices[smallest_number][0][2]
-#print(smallest_number, smallest_perimeter)
-#for pr in slices[smallest_number]:
-#    print(pr)
 
 
 bottom_number = 0
@@ -170,14 +166,10 @@ for slice in reversed(slices):
     number+=1
 
 
-
 # Metszéspontok hozzáadása a három szinten
-fnc.add_intersections(slices, smallest_height, bottom_height, half_way_height,
-                      smallest_number, bottom_number, half_way_number)
-#DEBUG PRINT
-#for s in slices:
-#    for i in s:
-#        print(i)
+fnc.add_inetersections_2(slices, smallest_height, smallest_number)
+fnc.add_inetersections_2(slices, bottom_height, bottom_number)
+fnc.add_inetersections_2(slices, half_way_height, half_way_number)
 
 
 # A pozitív és negatív oldalak listája
@@ -196,12 +188,6 @@ fnc.separate_sides(slices, half_way_number, half_way_positive_side, half_way_neg
 fnc.separate_sides(slices, smallest_number, smallest_positive_side, smallest_negative_side, 1) 
 smallest_centroid = np.mean(slices[smallest_number], axis=0)
 
-
-#print(smallest_height)
-#print(half_way_height)
-#print(bottom_height)
-#print(absolute_bottom)
-
 # A pontok sorrendbe szedése
 smallest_positive_side_sorted = []
 smallest_negative_side_sorted = []
@@ -214,27 +200,11 @@ bottom_negative_side_sorted = []
 #Oldalak rendbeszedése
 fnc.sort_side(smallest_positive_side, smallest_positive_side_sorted,0)
 fnc.sort_side(smallest_negative_side, smallest_negative_side_sorted,1)
-
-    
 fnc.sort_side(half_way_positive_side, half_way_positive_side_sorted,0)
-fnc.sort_side(half_way_negative_side, half_way_negative_side_sorted,1)
-  
-  
-#for i in bottom_positive_side:
-#    print(i)    
-#print(".............................")
-#for i in bottom_negative_side:
-#    print(i)
-
-#print("###########################£")
+fnc.sort_side(half_way_negative_side, half_way_negative_side_sorted,1) 
 fnc.sort_side(bottom_positive_side, bottom_positive_side_sorted,0)
 fnc.sort_side(bottom_negative_side, bottom_negative_side_sorted,1)
 
-#for i in bottom_positive_side_sorted:
-#    print(i)    
-#print(".............................")
-#for i in bottom_negative_side_sorted:
-#    print(i)
     
 np.savetxt("data/03_smallest_center_of_gravity.pts", [smallest_centroid], delimiter=' ')      
 np.savetxt("data/03_smallest_positive_side.pts", smallest_positive_side_sorted, delimiter=' ')
@@ -253,6 +223,76 @@ np.savetxt("data/03_farthest_and_closest_fsc.pts",
         ])
 
 
+####################################################################################################################
+# 4. Ezek az első koordináta rendszer szerint
+#   * y szerint szétválasztva [ legkisebb kerület ,legkisebb kerület - 150 ]
+#   * x szerint szétválasztva [ legkisebb kerület ,legkisebb kerület - 150  ]
+
+
+
+zero_slices = []
+
+number=0
+for s in slices:
+    fnc.add_inetersections_2(slices, s[0][2], number)
+    number+=1
+
+for s in slices:
+    zs = []
+    for c in s:
+        if c[0]==0 or c[1]==0:
+            zs.append(c)
+    zero_slices.append(zs)
+
+
+x_segment_positive = []
+x_segment_negative = []
+y_segment_positive = []
+y_segment_negative = []
+
+for coordinate in zero_slices[0]:
+    if coordinate[0] == 0:
+        if coordinate[1] >= 0:
+            x_segment_positive.append(coordinate)
+        else:
+            x_segment_negative.append(coordinate)
+    
+    if coordinate[1] == 0:
+        if coordinate[0] >= 0:
+            y_segment_positive.append(coordinate)
+        else:
+            y_segment_negative.append(coordinate)
+
+x_zeros = []
+y_zeros = []
+
+
+for s in range(int(smallest_height/5), int((bottom_height)/5)+1):
+    for i in zero_slices[s]:
+        if i[0] == 0:
+            x_zeros.append(i)
+        if i[1] == 0:
+            y_zeros.append(i)
+    x_segment_positive.append(fnc.find_closest_coordinate(x_zeros,x_segment_positive[s-int(smallest_height/5)]))
+    x_segment_negative.append(fnc.find_closest_coordinate(x_zeros,x_segment_negative[s-int(smallest_height/5)]))
+    y_segment_positive.append(fnc.find_closest_coordinate(y_zeros,y_segment_positive[s-int(smallest_height/5)]))
+    y_segment_negative.append(fnc.find_closest_coordinate(y_zeros,y_segment_negative[s-int(smallest_height/5)]))
+    x_zeros = []
+    y_zeros = []
+
+
+x_segment_positive.pop(0)                                   
+x_segment_negative.pop(0)
+y_segment_positive.pop(0)
+y_segment_negative.pop(0)
+
+
+np.savetxt("data/04_x_positive",x_segment_positive, delimiter=' ')
+np.savetxt("data/04_x_negative",x_segment_negative, delimiter=' ')
+np.savetxt("data/04_y_positive",y_segment_positive, delimiter=' ')
+np.savetxt("data/04_y_negative",y_segment_negative, delimiter=' ')
+
+
 # A kiolvasott tartalom kiürítése
 fr.coordinates = [] 
 fr.points = []
@@ -263,7 +303,7 @@ fr.composite_curves = []
 
 
 ####################################################################################################################
-# 4. Új koordinátarendszer szerint
+# 5. Új koordinátarendszer (x',y',z') szerint
 #    * Hüvelykujj meghatározása
 #    * Valós max szint hülyekujj + 15 szint
 #    * y' szerint szétválasztott görbék [origo - hüvelykujj]
@@ -276,7 +316,7 @@ fr.read_file()
 # Rendezéshez egy osztály példányokat tartalmazó lista
 coordinates_class = []
 
-# Rossz koordináták kiszűrése és minden ötödik elem
+# Rossz koordináták kiszűrése és minden ötödik elem coordinate_class egyedkent a listahoz adasa
 for coordinate in fr.coordinates [::NTH_ELEMENT]:
     # mm-enként
     if (coordinate[2] % 5) == 0.0:
@@ -297,9 +337,8 @@ fnc.separate_slices(coordinates, slices)
 # A görbék szintjének meghatározása a z koordinátákalapján
 fnc.level_of_curves(fr.composite_curves, fr.composite_curve_segments, fr.trimmed_curves, fr.lines, fr.points)
 
-# A hüvelykujjszintt megtalálása    
+# A hüvelykujjszint megtalálása    
 thumb = fnc.find_thumb_level(fr.composite_curves)
-print(thumb)
     
 # Görbe a hüvelykujjszint + 15 szinten, ezen súlypont kiírása.
 thumb_plus = thumb + 15
@@ -316,9 +355,75 @@ for t in fr.composite_curves:
     number+=1
 
 
+number=0
+for s in slices:
+    fnc.add_inetersections_2(slices, s[0][2], number)
+    number+=1
+    
+
+new_x_segment_positive = []
+new_x_segment_negative = []
+new_y_segment_positive = []
+new_y_segment_negative = []
+
+# x' sikmetszet gorbeje [0,z+15], y' szerint szetvalsztva
+# y' simmetszet gorbeje [0,z+15], x' szerint szetvalasztva
+zero_slices = []
+
+for s in slices:
+    zs = []
+    for c in s:
+        if c[0]==0 or c[1]==0:
+            zs.append(c)
+    zero_slices.append(zs)
+
+
+for coordinate in zero_slices[0]:
+    if coordinate[0] == 0:
+        if coordinate[1] >= 0:
+            new_x_segment_positive.append(coordinate)
+        else:
+            new_x_segment_negative.append(coordinate)
+    
+    if coordinate[1] == 0:
+        if coordinate[0] >= 0:
+            new_y_segment_positive.append(coordinate)
+        else:
+            new_y_segment_negative.append(coordinate)
+
+x_zeros = []
+y_zeros = []
+
+
+for s in range(1, int(thumb_plus/5)+1):
+    for i in zero_slices[s]:
+        if i[0] == 0:
+            x_zeros.append(i)
+        if i[1] == 0:
+            y_zeros.append(i)
+    new_x_segment_positive.append(fnc.find_closest_coordinate(x_zeros,new_x_segment_positive[s-1]))
+    new_x_segment_negative.append(fnc.find_closest_coordinate(x_zeros,new_x_segment_negative[s-1]))          
+    new_y_segment_positive.append(fnc.find_closest_coordinate(y_zeros,new_y_segment_positive[s-1]))
+    new_y_segment_negative.append(fnc.find_closest_coordinate(y_zeros,new_y_segment_negative[s-1]))
+    x_zeros = []
+    y_zeros = []
+
+
+
+np.savetxt("data/05_new_x_positive",new_x_segment_positive, delimiter=' ')
+np.savetxt("data/05_new_x_negative",new_x_segment_negative, delimiter=' ')
+np.savetxt("data/05_new_y_positive",new_y_segment_positive, delimiter=' ')
+np.savetxt("data/05_new_y_negative",new_y_segment_negative, delimiter=' ')
+
+
 # A hüvelkyujj szint szétválasztása Y szerint
 thumb_positive_side = []
 thumb_negative_side = []
+
+#fnc.add_inetersections_2(slices, thumb, thumb_number)
+
+#fnc.add_inetersections_2(slices, thumb_plus, thumb_number+3)
+
 fnc.separate_sides(slices, thumb_number, thumb_positive_side, thumb_negative_side, 1)
 
 thumb_plus_coordinates = []
@@ -326,11 +431,20 @@ for tpc in fnc.get_coordinates_for_curve(curve_thumb_plus)[::NTH_ELEMENT]:
     thumb_plus_coordinates.append(tpc)
 
 
+thumb_positive_side_sorted = []
+thumb_negative_side_sorted = []
+thumb_plus_coordinates_sorted = []
 
 
-np.savetxt("data/04_thumb_positive_side.pts", thumb_positive_side, delimiter=' ')
-np.savetxt("data/04_thumb_negative_side.pts", thumb_negative_side, delimiter=' ')
-np.savetxt("data/04_thumb_plus_15.pts", thumb_plus_coordinates, delimiter = ' ')
+fnc.sort_side(thumb_plus_coordinates, thumb_plus_coordinates_sorted,2)
+fnc.sort_side(thumb_positive_side, thumb_positive_side_sorted,0)
+fnc.sort_side(thumb_negative_side, thumb_negative_side_sorted,1)
+
+
+np.savetxt("data/05_thumb_positive_side.pts", thumb_positive_side_sorted, delimiter=' ')
+np.savetxt("data/05_thumb_negative_side.pts", thumb_negative_side_sorted, delimiter=' ')
+np.savetxt("data/05_thumb_plus_15.pts", thumb_plus_coordinates_sorted, delimiter = ' ')
+
 
 # A kiolvasott tartalom kiürítése
 fr.coordinates = [] 
@@ -339,12 +453,6 @@ fr.lines = []
 fr.trimmed_curves = []
 fr.composite_curve_segments = [] 
 fr.composite_curves = []
-
-####################################################################################################################
-# 5. 
-#   Ezek az első koordináta rendszer szerint
-#   * y szerint szétválasztva [ legkisebb kerület - legkisebb kerület - 150 ]
-#   * x szerint szétválasztva [ legkisebb kerület - legkisebb kerület - 150  ]
 
 
 # TODO 03_bottom_negative_side súlypontot is tartalmaz ???
