@@ -489,7 +489,7 @@ def add_intersections(slices, smallest_height, bottom_height, half_way_height, s
     
     #print(intersections_bottom)
     #print(intersections_half_way)
-    print(intersections_smallest)
+    #print(intersections_smallest)
     
     
 

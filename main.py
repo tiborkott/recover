@@ -13,7 +13,7 @@ NTH_ELEMENT = 5
 #    a súlyponthoz legközelebbi és legtávolabbi pontok kiírása.
 
 # A fájl megadása és beolvasása.
-fr.FILE = 'test/01_2sulypontg_step_test2.stp'
+fr.FILE = 'test/cog_01.stp'
 fr.read_file()
 
 # A legalsó sík és a legfelső sík halmazok létrehozása
@@ -55,7 +55,7 @@ np.savetxt("data/01_closest_fc.pts",
         ])
 
 # A súlypontok kiírása fájlba
-np.savetxt("data/01_cetner_of_gravity.pts", [centroid1], delimiter=' ')
+np.savetxt("data/01_cetner_of_gravity.pts", [centroid1, centroid2] , delimiter=' ')
 
 # A kiolvasott tartalom kiürítése
 fr.coordinates = [] 
@@ -71,7 +71,7 @@ fr.composite_curves = []
 #    Adott z szintről alulról haladva csak egy vagy két composite curve van?
 
 # A fájl megadása és beolvasása.
-fr.FILE = 'test/02_szeletelt_5mm_step_test2.stp'
+fr.FILE = 'test/szelet_02.stp'
 fr.read_file()
 
 
@@ -92,6 +92,10 @@ thumb_plus_centroid = fnc.centroid(thumb_plus_coordinates)
 # A súlypont és a legtávolabbi pont kiírása fájlba
 np.savetxt("data/02_cetner_of_gravity.pts", [thumb_plus_centroid], delimiter=' ')
 np.savetxt("data/02_farthest_from_centroid.pts", [fnc.find_farthest_coordinate(thumb_plus_coordinates, thumb_plus_centroid)],delimiter=' ')
+
+# obj fájl debugra
+np.savetxt("debug/02_cetner_of_gravity.obj", [thumb_plus_centroid], delimiter=' ')
+np.savetxt("debug/02_farthest_from_centroid.obj", [fnc.find_farthest_coordinate(thumb_plus_coordinates, thumb_plus_centroid)],delimiter=' ')
 
 
 ####################################################################################################################
@@ -115,14 +119,27 @@ for coordinate in coordinates_class:
     coordinates.append([coordinate.get_x(), coordinate.get_y(), coordinate.get_z()])
 
 # Szeletek lista és az egyes szeletek szétválasztása z érték alapján   
+
+    
+    
 slices = []
 fnc.separate_slices(coordinates, slices)
+
+slices_sorted = []
+for s in slices:
+    sorted = []
+    fnc.sort_side(s, sorted, 3)
+    slices_sorted.append(sorted)
+    
+slices = []
+slices = slices_sorted
 
 number = 0
 absolute_bottom = float('-inf')
 smallest_perimeter =float('inf')
 smallest_number = 0
 smallest_height = 0
+
 
 for slice in reversed(slices):
     perimeter = 0.0
@@ -143,15 +160,20 @@ for slice in reversed(slices):
     if(perimeter <= smallest_perimeter):
         smallest_perimeter = perimeter
         smallest_number = number
-        
+       
+    print(perimeter)    
     number += 1
+
 
 smallest_height = slices[smallest_number][0][2]
 
+print("PRINT")
+print(smallest_perimeter)
+print(smallest_height)
 
 bottom_number = 0
 half_way_number = 0
-bottom_height = fnc.find_thumb_level(fr.composite_curves) #smallest_height + min(150,absolute_bottom-smallest_height),
+bottom_height = smallest_height - min(150, smallest_height - 0) #fnc.find_thumb_level(fr.composite_curves) #smallest_height + min(150,absolute_bottom-smallest_height),
 half_way_height = np.round(bottom_height - (bottom_height - smallest_height)/2//5*5)
 
 # A magasságok szintjének megkeresése
@@ -165,6 +187,13 @@ for slice in reversed(slices):
             half_way_number = slices.__len__() - number - 1
     number+=1
 
+print("HEIGHTS")
+print("SMALLEST:")
+print(smallest_height)
+print("BOTTOM:")
+print(bottom_height)
+print("HALF-WAY:")
+print(half_way_height)
 
 # Metszéspontok hozzáadása a három szinten
 fnc.add_inetersections_2(slices, smallest_height, smallest_number)
@@ -222,6 +251,24 @@ np.savetxt("data/03_farthest_and_closest_fsc.pts",
             fnc.find_closest_coordinate(slices[smallest_number], smallest_centroid),  
         ])
 
+# debug obj file save 
+
+    
+np.savetxt("debug/03_smallest_center_of_gravity.obj", [smallest_centroid], delimiter=' ',fmt='%1.8f')      
+np.savetxt("debug/03_smallest_positive_side.obj", smallest_positive_side_sorted, delimiter=' ',fmt='%1.8f')
+np.savetxt("debug/03_smallest_negative_side.obj", smallest_negative_side_sorted, delimiter=' ',fmt='%1.8f')
+
+np.savetxt("debug/03_half_way_positive_side.obj", half_way_positive_side_sorted, delimiter=' ',fmt='%1.8f')
+np.savetxt("debug/03_half_way_negative_side.obj", half_way_negative_side_sorted, delimiter=' ',fmt='%1.8f')
+
+np.savetxt("debug/03_bottom_positive_side.obj", bottom_positive_side_sorted, delimiter=' ',fmt='%1.8f')
+np.savetxt("debug/03_bottom_negative_side.obj", bottom_negative_side_sorted, delimiter=' ',fmt='%1.8f')
+
+np.savetxt("debug/03_farthest_and_closest_fsc.obj", 
+        [
+            fnc.find_farthest_coordinate(slices[smallest_number], smallest_centroid),
+            fnc.find_closest_coordinate(slices[smallest_number], smallest_centroid),  
+        ],fmt='%1.8f')
 
 ####################################################################################################################
 # 4. Ezek az első koordináta rendszer szerint
@@ -462,3 +509,11 @@ fr.composite_curves = []
 # DONE sorba legyenek a pontok y=0-tól 
 # DONE túl hossszú név a farthest and closest fájloknak
 # DONE legkisebb kerület legtávolabbi és legközelebbi rossz z szinten
+
+
+# TODO A három szint meg mindig rossz sorrendben (0 - az alja és onnan megy felfelé)
+#       bottom - huvelykujj
+#       halfway - középen
+#       smallest - nem a legkisebb :(
+# TODO nullpontok kicsit beljebb vannak csúszva (0,01)
+# TODO legkisebb kerület keresés nem jó
